@@ -1,0 +1,48 @@
+
+name: Build Deskland for Apple Silicon
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build arm64 executable
+        run: swift build -c release --arch arm64
+
+      - name: Package macOS app
+        shell: bash
+        run: |
+          APP="Deskland.app"
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+          cp .build/arm64-apple-macosx/release/Deskland "$APP/Contents/MacOS/Deskland"
+          cat > "$APP/Contents/Info.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key><string>Deskland</string>
+            <key>CFBundleDisplayName</key><string>Deskland</string>
+            <key>CFBundleIdentifier</key><string>app.deskland.forestprototype</string>
+            <key>CFBundleExecutable</key><string>Deskland</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>LSMinimumSystemVersion</key><string>13.0</string>
+            <key>LSUIElement</key><true/>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict>
+          </plist>
+          PLIST
+          /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$APP" Deskland-macOS-arm64.zip
+
+      - name: Upload app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Deskland-macOS-arm64
+          path: Deskland-macOS-arm64.zip
+          if-no-files-found: error
